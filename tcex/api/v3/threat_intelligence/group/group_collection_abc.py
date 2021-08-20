@@ -23,4 +23,4 @@ class GroupCollectionABC(ThreatIntelligenceCollectionABC):
     @property
     def _api_endpoint(self) -> None:  # pragma: no cover
         """Return filter method."""
-        return ApiEndpoints.GROUP.value
+        return ApiEndpoints.GROUPS.value

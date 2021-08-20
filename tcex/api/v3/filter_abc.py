@@ -5,14 +5,14 @@ from typing import List
 
 # third-party
 from requests import Session
+from tcex.api.tql import TQL
 
 class FilterABC(ABC):
     """Case Management Filter Abstract Base Class"""
 
-    def __init__(self, session: Session, tql):
+    def __init__(self):
         """Initialize Class properties"""
-        self._session = session
-        self._tql = tql
+        self._tql = TQL()
 
     @property
     def _api_endpoint(self):
@@ -47,14 +47,6 @@ class FilterABC(ABC):
         """
         self.tql.set_raw_tql(tql)
 
-    def tql_data(self) -> dict:
-        """Return TQL data keywords."""
-        _tql_data = None
-        r = self._session.options(f'{self._api_endpoint}/tql', params={})
-        if r.ok:
-            _tql_data = r.json()['data']
-        # print('\nTQL DATA:', _tql_data)
-        return _tql_data
 
     def __str__(self) -> str:
         return self.tql.raw_tql or self.tql.as_str

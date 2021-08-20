@@ -22,9 +22,9 @@ class Adversaries(GroupCollectionABC):
     def _base_filter(self) -> dict:
         return {
             'keyword': 'typeName',
-            'operator': Operator.EQ,
-            'value': 'Adversary',
-            'type_': 'string',
+            'operator': Operator.IN,
+            'value': '(\"Adversary\")',
+            'type_': 'list',
         }
 
 
