@@ -123,7 +123,7 @@ class Playbooks(PlaybooksBase):
             # log/debug
             self.log.debug(f'create variable {key}')
             if variable_type not in ['Binary', 'BinaryArray']:
-                self.log.trace(f'variable value: {value}')
+                self.log.debug(f'variable value: {value}')
 
             if variable_type in self._variable_single_types:
                 data = self._create(key, value)

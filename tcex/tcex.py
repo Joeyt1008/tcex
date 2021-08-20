@@ -12,6 +12,7 @@ import threading
 from functools import lru_cache
 from typing import Optional, Union
 from urllib.parse import quote
+from tcex.api import API
 
 from .app_config_object import InstallJson
 from .inputs import Inputs
@@ -48,6 +49,7 @@ class TcEx:
             pass
 
         # Property defaults
+        self._api = None
         self._config: dict = kwargs.get('config') or {}
         self._default_args = None
         self._error_codes = None
@@ -74,6 +76,12 @@ class TcEx:
 
         # init args (needs logger)
         self.inputs = Inputs(self, self._config, kwargs.get('config_file'))
+
+    @property
+    def api(self):
+        if not self._api:
+            self._api = API(self.session)
+        return self._api
 
     def _association_types(self):
         """Retrieve Custom Indicator Associations types from the ThreatConnect API."""
