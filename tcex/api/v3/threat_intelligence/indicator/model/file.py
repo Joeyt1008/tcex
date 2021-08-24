@@ -7,6 +7,7 @@ from tcex.api.v3.threat_intelligence.indicator.model.indicator_abc import Indica
 from tcex.api.v3.threat_intelligence.indicator.model.indicator_abc import Indicator as IndicatorModel
 
 
+
 class Files(
     IndicatorsModel,
     title='Files Model',
@@ -18,7 +19,7 @@ class File(
     IndicatorModel,
     title='File Model',
 ):
-    associated_groups: 'Optional[All_Groups]' = Field(
+    associated_groups: Optional['All_Groups'] = Field(
         None,
         description='The **associatedGroups** of the indicator.',
         id='associatedGroups'

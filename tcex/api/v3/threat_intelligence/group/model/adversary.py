@@ -19,12 +19,12 @@ class Adversary(
     GroupModel,
     title='Adversary Model',
 ):
-    associated_indicators: 'Optional[All_Indicators]' = Field(
+    associated_indicators: Optional['All_Indicators'] = Field(
         None,
         description='The **associatedIndicators** of the group.',
         id='associatedIndicators'
     )
-    associated_groups: 'Optional[All_Groups]' = Field(
+    associated_groups: Optional['All_Groups'] = Field(
         None,
         description='The **associatedGroups** of the group.',
         id='associatedGroups'

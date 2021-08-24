@@ -21,11 +21,9 @@ class Indicator:
         """Return a instance of File object."""
         return File(session=self.session, **kwargs)
 
-    # TODO: Should these types of methods (files, adversaries, addresses, ect) accept kwargs? Do they need a model
-    #  property?
-    def files(self, **kwargs) -> Files:
+    def files(self) -> Files:
         """Return a instance of Files object."""
-        return Files(session=self.session, **kwargs)
+        return Files(session=self.session)
 
     def create_entity(self, entity: dict, owner: str) -> dict:
         """Create a CM object provided a dict and owner."""

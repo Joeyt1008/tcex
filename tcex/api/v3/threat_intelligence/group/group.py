@@ -21,9 +21,9 @@ class Group:
         """Return a instance of Adversary object."""
         return Adversary(session=self.session, **kwargs)
 
-    def adversaries(self, **kwargs) -> Adversaries:
+    def adversaries(self) -> Adversaries:
         """Return a instance of Adversaries object."""
-        return Adversaries(session=self.session, **kwargs)
+        return Adversaries(session=self.session)
 
     def create_entity(self, entity: dict, owner: str) -> dict:
         """Create a CM object provided a dict and owner."""

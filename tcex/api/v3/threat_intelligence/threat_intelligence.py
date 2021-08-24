@@ -30,6 +30,8 @@ class ThreatIntelligence:
 
         return Indicator(session=self.session)
 
-    # Maybe have something like this so the user doesnt need to drill down and can just pass group_type?
-    def group_obj(self, group_type, **kwargs):
-        pass
+    def get_group(self, group_type):
+        self.group.__getattribute__(group_type.lower())
+
+    def get_indicator(self, indicator_type):
+        self.group.__getattribute__(indicator_type.lower())

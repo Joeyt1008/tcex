@@ -17,8 +17,6 @@ class GroupABC(ThreatIntelligenceABC):
             'type_': 'integer',
         }
 
-        # TODO: [low] does this output a dict or json string?
-
     def _generate_body(self, method: str) -> dict:
         """Return the generated POST body."""
         schema = self.model.schema()

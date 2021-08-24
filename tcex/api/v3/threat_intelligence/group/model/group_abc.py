@@ -6,6 +6,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Extra, Field
 
 # first-party
+from tcex.api.v3.threat_intelligence.model.threat_intelligence_abc import ThreatIntelligenceModel
 from tcex.utils import Utils
 
 
@@ -15,7 +16,7 @@ class Groups(
 ):
     """Artifacts Model"""
 
-    data: 'Optional[List[Group]]' = Field(
+    data: Optional[List['Group']] = Field(
         [],
         description='The data for the Group.',
         title='data',
@@ -23,7 +24,7 @@ class Groups(
 
 
 class Group(
-    BaseModel,
+    ThreatIntelligenceModel,
     title='Group Model',
     alias_generator=Utils().snake_to_camel,
     extra=Extra.allow,
@@ -31,12 +32,6 @@ class Group(
 ):
     """Artifact Model"""
 
-    id: Optional[int] = Field(
-        None,
-        description='The **id** of the Group.',
-        methods=['POST'],
-        id='id',
-    )
     type: Optional[str] = Field(
         None,
         description='The **type** of the Group.',
@@ -69,6 +64,7 @@ class Group(
         description='The **createdBy** of the Group.',
         id='createdBy'
     )
+
 
 # add forward references
 Group.update_forward_refs()

@@ -1,12 +1,14 @@
 """Artifact Model"""
 # standard library
-from typing import Optional, List, Union
+from typing import Optional, List
 
 # third-party
 from pydantic import BaseModel, Extra, Field
 
 # first-party
 from tcex.utils import Utils
+from tcex.api.v3.threat_intelligence.model.threat_intelligence_abc import ThreatIntelligenceModel
+
 
 
 class Indicators(
@@ -23,7 +25,7 @@ class Indicators(
 
 
 class Indicator(
-    BaseModel,
+    ThreatIntelligenceModel,
     title='Indicator Model',
     alias_generator=Utils().snake_to_camel,
     extra=Extra.allow,
@@ -36,10 +38,6 @@ class Indicator(
         id='id',
     )
 
-
-
-
-from tcex.api.v3.threat_intelligence.group.model.adversary import Adversaries
 
 # add forward references
 Indicator.update_forward_refs()
