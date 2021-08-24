@@ -2,10 +2,9 @@
 # standard library
 import logging
 from abc import ABC
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 # third-party
-from pydantic import BaseModel
 from requests import Response
 from requests.exceptions import ProxyError
 

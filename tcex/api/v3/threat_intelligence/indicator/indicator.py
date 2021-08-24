@@ -3,10 +3,10 @@
 from requests import Session
 
 # first-party
-from tcex.api.v3.threat_intelligence.group.type.adversary import Adversary, Adversaries
+from tcex.api.v3.threat_intelligence.indicator.type.file import File, Files
 
 
-class Group:
+class Indicator:
     """Case Management
 
     Args:
@@ -17,13 +17,15 @@ class Group:
         """Initialize Class properties."""
         self.session = session
 
-    def adversary(self, **kwargs) -> Adversary:
-        """Return a instance of Adversary object."""
-        return Adversary(session=self.session, **kwargs)
+    def file(self, **kwargs) -> File:
+        """Return a instance of File object."""
+        return File(session=self.session, **kwargs)
 
-    def adversaries(self, **kwargs) -> Adversaries:
-        """Return a instance of Adversaries object."""
-        return Adversaries(session=self.session, **kwargs)
+    # TODO: Should these types of methods (files, adversaries, addresses, ect) accept kwargs? Do they need a model
+    #  property?
+    def files(self, **kwargs) -> Files:
+        """Return a instance of Files object."""
+        return Files(session=self.session, **kwargs)
 
     def create_entity(self, entity: dict, owner: str) -> dict:
         """Create a CM object provided a dict and owner."""
@@ -38,7 +40,7 @@ class Group:
         data = {'status_code': r.status_code}
         if r.ok:
             data.update(r.json().get('data', {}))
-            data['main_type'] = 'Group'
+            data['main_type'] = 'Indicator'
             data['sub_type'] = entity_type
             data['owner'] = owner
 

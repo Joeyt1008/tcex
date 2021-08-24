@@ -12,7 +12,7 @@ import threading
 from functools import lru_cache
 from typing import Optional, Union
 from urllib.parse import quote
-from tcex.api import API
+from tcex.api.api import API
 
 from .app_config_object import InstallJson
 from .inputs import Inputs

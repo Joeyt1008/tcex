@@ -3,7 +3,7 @@
 from requests import Session
 
 # first-party
-from tcex.api.v3.threat_intelligence import ThreatIntelligence
+from tcex.api.v3.threat_intelligence.threat_intelligence import ThreatIntelligence
 
 
 class V3:

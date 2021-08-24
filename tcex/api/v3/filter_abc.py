@@ -4,8 +4,8 @@ from abc import ABC
 from typing import List
 
 # third-party
-from requests import Session
 from tcex.api.tql import TQL
+
 
 class FilterABC(ABC):
     """Case Management Filter Abstract Base Class"""
@@ -46,7 +46,6 @@ class FilterABC(ABC):
             tql: The raw TQL string for the filter.
         """
         self.tql.set_raw_tql(tql)
-
 
     def __str__(self) -> str:
         return self.tql.raw_tql or self.tql.as_str

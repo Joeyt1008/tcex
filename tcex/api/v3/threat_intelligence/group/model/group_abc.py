@@ -15,9 +15,9 @@ class Groups(
 ):
     """Artifacts Model"""
 
-    data: 'Optional[List[Adversary]]' = Field(
+    data: 'Optional[List[Group]]' = Field(
         [],
-        description='The data for the Adversary.',
+        description='The data for the Group.',
         title='data',
     )
 
@@ -70,4 +70,6 @@ class Group(
         id='createdBy'
     )
 
-
+# add forward references
+Group.update_forward_refs()
+Groups.update_forward_refs()

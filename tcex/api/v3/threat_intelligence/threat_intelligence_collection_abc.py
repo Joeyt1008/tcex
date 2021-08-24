@@ -82,6 +82,7 @@ class ThreatIntelligenceCollectionABC(ABC):
 
     def iterate(self, base_class) -> 'CaseManagementType':
         parameters = {}
+        parameters['fields'] = ['groups', 'indicators']
 
         if self.filter.__str__():
             parameters['tql'] = self.filter.__str__()

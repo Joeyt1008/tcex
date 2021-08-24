@@ -2,8 +2,8 @@
 # first-party
 from tcex.api.v3.threat_intelligence.group.group_collection_abc import GroupCollectionABC
 from tcex.api.v3.threat_intelligence.group.group_abc import GroupABC
-from tcex.api.v3.threat_intelligence.group.model import Adversaries as AdversariesModel
-from tcex.api.v3.threat_intelligence.group.model import Adversary as AdversaryModel
+from tcex.api.v3.threat_intelligence.group.model.adversary import Adversaries as AdversariesModel
+from tcex.api.v3.threat_intelligence.group.model.adversary import Adversary as AdversaryModel
 from tcex.api.tql import Operator
 
 
