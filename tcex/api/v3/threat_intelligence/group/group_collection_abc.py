@@ -13,7 +13,8 @@ class GroupCollectionABC(ThreatIntelligenceCollectionABC):
         """Return filter method."""
         if not self._filter:
             self._filter = GroupFilter()
-            self._filter._tql.add_filter(**self._base_filter)
+            if self._base_filter:
+                self._filter._tql.add_filter(**self._base_filter)
         return self._filter
 
     @property

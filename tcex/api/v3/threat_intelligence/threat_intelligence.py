@@ -5,6 +5,8 @@ from requests import Session
 # first-party
 from tcex.api.v3.threat_intelligence.group.group import Group
 from tcex.api.v3.threat_intelligence.indicator.indicator import Indicator
+from tcex.api.v3.threat_intelligence.indicator.type.indicators import Indicators
+from tcex.api.v3.threat_intelligence.group.type.groups import Groups
 
 
 class ThreatIntelligence:
@@ -24,14 +26,19 @@ class ThreatIntelligence:
 
         return Group(session=self.session)
 
+    def groups(self):
+        return Groups(session=self.session)
+
     @property
     def indicator(self) -> Indicator:
         """Return a instance of Adversary object."""
 
         return Indicator(session=self.session)
 
-    def get_group(self, group_type):
-        self.group.__getattribute__(group_type.lower())
+    def indicators(self) -> Indicator:
+        """Return a instance of Adversary object."""
 
-    def get_indicator(self, indicator_type):
-        self.group.__getattribute__(indicator_type.lower())
+        return Indicators(session=self.session)
+
+
+

@@ -2,7 +2,7 @@
 # standard library
 from pydantic import Field
 
-from typing import Optional, Union
+from typing import Optional
 
 from tcex.api.v3.threat_intelligence.group.model.group_abc import Groups as GroupsModel
 from tcex.api.v3.threat_intelligence.group.model.group_abc import Group as GroupModel

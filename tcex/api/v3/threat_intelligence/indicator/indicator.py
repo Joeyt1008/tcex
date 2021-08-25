@@ -25,6 +25,12 @@ class Indicator:
         """Return a instance of Files object."""
         return Files(session=self.session)
 
+    def get(self, _type):
+        try:
+            return self.__getattribute__(_type.lower())
+        except Exception:
+            return None
+
     def create_entity(self, entity: dict, owner: str) -> dict:
         """Create a CM object provided a dict and owner."""
         entity_type = entity.pop('type').lower()

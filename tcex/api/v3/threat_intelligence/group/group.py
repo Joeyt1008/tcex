@@ -25,6 +25,12 @@ class Group:
         """Return a instance of Adversaries object."""
         return Adversaries(session=self.session)
 
+    def get(self, type_):
+        try:
+            return self.__getattribute__(type_.lower())
+        except Exception:
+            return None
+
     def create_entity(self, entity: dict, owner: str) -> dict:
         """Create a CM object provided a dict and owner."""
         entity_type = entity.pop('type').lower()

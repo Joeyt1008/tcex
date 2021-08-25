@@ -241,6 +241,12 @@ class ThreatIntelligenceABC(ABC):
             self._event.send(
                 'handle_error', code=951, message_values=['GET', r.status_code, err, r.url]
             )
+
+        if self.model.type != r.json().get('data', {}).get('type'):
+            err = r.text or r.reason
+            self._event.send(
+                'handle_error', code=952, message_values=['GET', r.status_code, err, r.url]
+            )
         self.model = r.json().get('data')
 
         return r

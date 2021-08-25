@@ -11,6 +11,8 @@ from requests.exceptions import ProxyError
 from tcex.pleb import Event
 from tcex.utils import Utils
 
+# from tcex.api.v3.threat_intelligence.group.group import Group
+
 # get tcex logger
 logger = logging.getLogger('tcex')
 
@@ -32,18 +34,8 @@ class ThreatIntelligenceCollectionABC(ABC):
         self._utils = Utils()
         self._event = Event()
         self._filter = None
-        self._model = None
         self._timeout = None
         self._headers = {'content-type': 'application/json'}
-
-    @property
-    def model(self):
-        return self._model
-
-    @model.setter
-    def model(self, data):
-        self._model = type(self.model)(**data)
-
 
     @property
     def _base_filter(self):
@@ -52,11 +44,8 @@ class ThreatIntelligenceCollectionABC(ABC):
     def __len__(self) -> int:
         """Return the length of the collection."""
         parameters = {'result_limit': 1}
-        tql_string = self.filter.tql.raw_tql
-        if not self.filter.tql.raw_tql:
-            tql_string = self.filter.tql.as_str
-        if tql_string:
-            parameters['tql'] = tql_string
+        if self.filter.__str__():
+            parameters['tql'] = self.filter.__str__()
 
         # convert all keys to camel case
         for k, v in list(parameters.items()):
@@ -68,7 +57,6 @@ class ThreatIntelligenceCollectionABC(ABC):
         )
         # TODO: [med] check with core team on discrepency on missing count.
         return r.json().get('count', len(r.json().get('data', [])))
-
 
     @property
     def filter(self) -> None:  # pragma: no cover
@@ -131,7 +119,11 @@ class ThreatIntelligenceCollectionABC(ABC):
             url = r.json().pop('next', None)
 
             for result in data:
-                yield base_class(session=self._session, **result)
+                try:
+                    type_ = result.get('type')
+                    yield base_class(session=self._session).get(type_)(**result)
+                except:
+                    yield base_class(session=self._session, **result)
 
             # break out of pagination if no next url present in results
             if not url:
