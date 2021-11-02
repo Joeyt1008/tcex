@@ -16,10 +16,10 @@ from tcex.app_config.install_json import InstallJson
 from tcex.backports import cached_property
 from tcex.input.field_types import Sensitive
 from tcex.input.models import feature_map, runtime_level_map
-from tcex.key_value_store import KeyValueApi, KeyValueRedis, RedisClient
 from tcex.playbook import Playbook
 from tcex.pleb import Event, NoneModel, proxies
-from tcex.sessions import TcSessionSingleton
+from tcex.registry import service_registry
+from tcex.sessions import TcSession
 from tcex.utils import Utils
 
 # get tcex logger
@@ -195,7 +195,7 @@ class Input:
         data = None
 
         # retrieve value from API
-        r = self.session.get(f'/internal/variable/runtime/{provider}/{key}')
+        r = service_registry.session_tc.get(f'/internal/variable/runtime/{provider}/{key}')
         if r.ok:
             try:
                 data = r.json().get('data')
@@ -224,7 +224,7 @@ class Input:
         #       the custom field types, so we use a singleton Session object that needs
         #       to get instantiated before the datamodel parses the App inputs, but after
         #       the "base" inputs are loaded into the model.
-        _ = self.session
+        _ = service_registry.session_tc
 
         if model:
             self._models.insert(0, model)
@@ -353,17 +353,6 @@ class Input:
         return input_model(self.models)(**self.contents)
 
     @cached_property
-    def key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
-        """Return the correct KV store for this execution."""
-        if self.data_unresolved.tc_kvstore_type == 'Redis':
-            return KeyValueRedis(self.redis_client)
-
-        if self.data_unresolved.tc_kvstore_type == 'TCKeyValueAPI':
-            return KeyValueApi(self.session)
-
-        raise RuntimeError(f'Invalid KV Store Type: ({self.data_unresolved.tc_kvstore_type})')
-
-    @cached_property
     def models(self) -> list:
         """Return all models for inputs."""
         # support external Apps that don't have an install.json
@@ -388,45 +377,3 @@ class Input:
             properties.update(model.schema().get('properties').keys())
 
         return properties
-
-    @cached_property
-    def playbook(self) -> Playbook:
-        """Return instance of Playbook."""
-        return Playbook(
-            key_value_store=self.key_value_store,
-            context=self.data_unresolved.tc_playbook_kvstore_context,
-            output_variables=self.data_unresolved.tc_playbook_out_variables,
-        )
-
-    @cached_property
-    def redis_client(self) -> RedisClient:
-        """Return redis client instance configure for Playbook/Service Apps."""
-        return RedisClient(
-            host=self.data_unresolved.tc_kvstore_host,
-            port=self.data_unresolved.tc_kvstore_port,
-            db=self.data_unresolved.tc_playbook_kvstore_id,
-        ).client
-
-    @cached_property
-    def session(self) -> TcSessionSingleton:
-        """Return Session configured for ThreatConnect API."""
-
-        _session = TcSessionSingleton(
-            base_url=self.data_unresolved.tc_api_path,
-            tc_token=self.data_unresolved.tc_token,
-            tc_token_expires=self.data_unresolved.tc_token_expires,
-        )
-
-        # set verify
-        _session.verify = self.data_unresolved.tc_verify
-
-        # add proxy support if requested
-        if self.data_unresolved.tc_proxy_tc:
-            _session.proxies = proxies(
-                proxy_host=self.data_unresolved.tc_proxy_host,
-                proxy_port=self.data_unresolved.tc_proxy_port,
-                proxy_user=self.data_unresolved.tc_proxy_username,
-                proxy_pass=self.data_unresolved.tc_proxy_password,
-            )
-
-        return _session

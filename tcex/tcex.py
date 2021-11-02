@@ -31,6 +31,8 @@ from tcex.logger.logger import Logger
 from tcex.logger.trace_logger import TraceLogger
 from tcex.playbook import Playbook
 from tcex.pleb import Event, proxies
+from tcex.pleb.scoped_value import ScopedValue
+from tcex.registry import service_registry
 from tcex.services.api_service import ApiService
 from tcex.services.common_service_trigger import CommonServiceTrigger
 from tcex.services.webhook_trigger_service import WebhookTriggerService
@@ -40,9 +42,6 @@ from tcex.tokens import Tokens
 from tcex.utils import Utils
 
 
-# TODO: [high] any passed in logger would have to support TRACE, which could be an issue.
-#       allowing a logger was intended for external Apps that may already have a logger.
-#       it may be possible to inject a trace method that just logs debug?
 class TcEx:
     """Provides basic functionality for all types of TxEx Apps.
 
@@ -51,8 +50,6 @@ class TcEx:
             external Apps.
         config_file (str, kwargs): A filename containing JSON configuration items typically used
             by external Apps.
-        logger (logging.Logger, kwargs): An pre-configured instance of logger to use instead of
-            tcex logger.
     """
 
     def __init__(self, **kwargs):
@@ -73,11 +70,12 @@ class TcEx:
         self.ij = InstallJson()
         self.main_os_pid = os.getpid()
 
-        # add custom logger if provided
-        self._log: object = kwargs.get('logger')
-
         # init inputs
         self.inputs = Input(self._config, kwargs.get('config_file'))
+        service_registry.add_factory(TcSession, ScopedValue(self.get_session), singleton=False)
+        service_registry.add_factory(RedisClient, ScopedValue(self.redis_client))
+        service_registry.add_factory('KeyValueStore', ScopedValue(self.get_key_value_store))
+        service_registry.add_factory(Playbook, ScopedValue(self.get_playbook))
 
         # method subscription for Event module
         self.event.subscribe(channel='exit', callback=self.exit)
@@ -88,7 +86,7 @@ class TcEx:
             self.event.subscribe(channel='register_token', callback=self.token.register_token)
 
         # log standard App info early so it shows at the top of the logfile
-        self.logger.log_info(self.inputs.data)
+        self.logger.log_info(self.inputs.data_unresolved)
 
     def _signal_handler(self, signal_interupt: int, _) -> None:
         """Handle singal interrupt."""
@@ -118,9 +116,11 @@ class TcEx:
 
     def aot_rpush(self, exit_code: int) -> None:
         """Push message to AOT action channel."""
-        if self.inputs.data.tc_playbook_db_type == 'Redis':
+        if self.inputs.data_unresolved.tc_playbook_db_type == 'Redis':
             try:
-                self.redis_client.rpush(self.inputs.data.tc_exit_channel, exit_code)
+                service_registry.redis_client.rpush(
+                    self.inputs.data_unresolved.tc_exit_channel, exit_code
+                )
             except Exception as e:  # pragma: no cover
                 self.exit(1, f'Exception during AOT exit push ({e}).')
 
@@ -273,7 +273,7 @@ class TcEx:
         self.exit_playbook_handler(msg)
 
         # aot notify
-        if self.inputs.data.tc_aot_enabled:
+        if self.inputs.data_unresolved.tc_aot_enabled:
             # push exit message
             self.aot_rpush(code)
 
@@ -314,10 +314,12 @@ class TcEx:
 
         # required only for tcex testing framework
         if (
-            hasattr(self.inputs.data, 'tcex_testing_context')
-            and self.inputs.data.tcex_testing_context is not None
+            hasattr(self.inputs.data_unresolved, 'tcex_testing_context')
+            and self.inputs.data_unresolved.tcex_testing_context is not None
         ):  # pragma: no cover
-            self.redis_client.hset(self.inputs.data.tcex_testing_context, '_exit_message', msg)
+            self.redis_client.hset(
+                self.inputs.data_unresolved.tcex_testing_context, '_exit_message', msg
+            )
 
     @property
     def exit_code(self) -> None:
@@ -352,7 +354,7 @@ class TcEx:
             output_variables: The requested output variables. For PB Apps outputs are provided on
                 startup, but for service Apps each request gets different outputs.
         """
-        return Playbook(self.key_value_store, context, output_variables)
+        return Playbook(self.key_value_store(), context, output_variables)
 
     @staticmethod
     def get_redis_client(
@@ -381,16 +383,17 @@ class TcEx:
         ).client
 
     # TODO: [high] testing ... organize this later
+    @ScopedValue
     def get_session(self) -> TcSession:
         """Return an instance of Requests Session configured for the ThreatConnect API."""
         _session = TcSession(
-            tc_api_access_id=self.inputs.data.tc_api_access_id,
-            tc_api_secret_key=self.inputs.data.tc_api_secret_key,
-            tc_base_url=self.inputs.data.tc_api_path,
+            tc_api_access_id=self.inputs.data_unresolved.tc_api_access_id,
+            tc_api_secret_key=self.inputs.data_unresolved.tc_api_secret_key,
+            tc_base_url=self.inputs.data_unresolved.tc_api_path,
         )
 
         # set verify
-        _session.verify = self.inputs.data.tc_verify
+        _session.verify = self.inputs.data_unresolved.tc_verify
 
         # set token
         _session.token = self.token
@@ -399,15 +402,15 @@ class TcEx:
         _session.headers.update({'User-Agent': f'TcEx: {__import__(__name__).__version__}'})
 
         # add proxy support if requested
-        if self.inputs.data.tc_proxy_tc:
+        if self.inputs.data_unresolved.tc_proxy_tc:
             _session.proxies = self.proxies
             self.log.info(
-                f'Using proxy host {self.inputs.data.tc_proxy_host}:'
-                f'{self.inputs.data.tc_proxy_port} for ThreatConnect session.'
+                f'Using proxy host {self.inputs.data_unresolved.tc_proxy_host}:'
+                f'{self.inputs.data_unresolved.tc_proxy_port} for ThreatConnect session.'
             )
 
         # enable curl logging if tc_log_curl param is set.
-        if self.inputs.data.tc_log_curl:
+        if self.inputs.data_unresolved.tc_log_curl:
             _session.log_curl = True
 
         return _session
@@ -426,14 +429,14 @@ class TcEx:
         )
 
         # add proxy support if requested
-        if self.inputs.data.tc_proxy_external:
+        if self.inputs.data_unresolved.tc_proxy_external:
             _session_external.proxies = self.proxies
             self.log.info(
-                f'Using proxy host {self.inputs.data.tc_proxy_host}:'
-                f'{self.inputs.data.tc_proxy_port} for external session.'
+                f'Using proxy host {self.inputs.data_unresolved.tc_proxy_host}:'
+                f'{self.inputs.data_unresolved.tc_proxy_port} for external session.'
             )
 
-        if self.inputs.data.tc_log_curl:
+        if self.inputs.data_unresolved.tc_log_curl:
             _session_external.log_curl = True
 
         return _session_external
@@ -472,20 +475,25 @@ class TcEx:
             raise RuntimeError(code, message)
 
     # TODO: [med] update to support scoped instance
-    @property
-    def key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
+    def get_key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
         """Return the correct KV store for this execution.
 
         The TCKeyValueAPI KV store is limited to two operations (create and read),
         while the Redis kvstore wraps a few other Redis methods.
         """
-        if self.inputs.data.tc_kvstore_type == 'Redis':
-            return KeyValueRedis(self.redis_client)
+        if self.inputs.data_unresolved.tc_kvstore_type == 'Redis':
+            return KeyValueRedis()
 
-        if self.inputs.data.tc_kvstore_type == 'TCKeyValueAPI':
-            return KeyValueApi(self.session)
+        if self.inputs.data_unresolved.tc_kvstore_type == 'TCKeyValueAPI':
+            return KeyValueApi()
 
-        raise RuntimeError(f'Invalid KV Store Type: ({self.inputs.data.tc_kvstore_type})')
+        raise RuntimeError(
+            f'Invalid KV Store Type: ({self.inputs.data_unresolved.tc_kvstore_type})'
+        )
+
+    @property
+    def key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
+        return self.get_key_value_store()
 
     @property
     def log(self) -> TraceLogger:
@@ -506,22 +514,25 @@ class TcEx:
         _logger = Logger(logger_name='tcex', session=self.get_session())
 
         # add api handler
-        if self.inputs.data.tc_token is not None and self.inputs.data.tc_log_to_api:
-            _logger.add_api_handler(level=self.inputs.data.tc_log_level)
+        if (
+            self.inputs.data_unresolved.tc_token is not None
+            and self.inputs.data_unresolved.tc_log_to_api
+        ):
+            _logger.add_api_handler(level=self.inputs.data_unresolved.tc_log_level)
 
         # add rotating log handler
         _logger.add_rotating_file_handler(
             name='rfh',
-            filename=self.inputs.data.tc_log_file,
-            path=self.inputs.data.tc_log_path,
-            backup_count=self.inputs.data.tc_log_backup_count,
-            max_bytes=self.inputs.data.tc_log_max_bytes,
-            level=self.inputs.data.tc_log_level,
+            filename=self.inputs.data_unresolved.tc_log_file,
+            path=self.inputs.data_unresolved.tc_log_path,
+            backup_count=self.inputs.data_unresolved.tc_log_backup_count,
+            max_bytes=self.inputs.data_unresolved.tc_log_max_bytes,
+            level=self.inputs.data_unresolved.tc_log_level,
         )
 
         # set logging level
-        _logger.update_handler_level(level=self.inputs.data.tc_log_level)
-        _logger.log.setLevel(_logger.log_level(self.inputs.data.tc_log_level))
+        _logger.update_handler_level(level=self.inputs.data_unresolved.tc_log_level)
+        _logger.log.setLevel(_logger.log_level(self.inputs.data_unresolved.tc_log_level))
 
         # replay cached log events
         _logger.replay_cached_events(handler_name='cache')
@@ -561,8 +572,8 @@ class TcEx:
         if not isinstance(message, str):
             message = str(message)
 
-        if os.access(self.inputs.data.tc_out_path, os.W_OK):
-            message_file = os.path.join(self.inputs.data.tc_out_path, 'message.tc')
+        if os.access(self.inputs.data_unresolved.tc_out_path, os.W_OK):
+            message_file = os.path.join(self.inputs.data_unresolved.tc_out_path, 'message.tc')
         else:
             message_file = 'message.tc'
 
@@ -590,8 +601,8 @@ class TcEx:
             tcex.playbook.Playbooks: An instance of Playbooks
         """
         return self.get_playbook(
-            context=self.inputs.data.tc_playbook_kvstore_context,
-            output_variables=self.inputs.data.tc_playbook_out_variables,
+            context=self.inputs.data_unresolved.tc_playbook_kvstore_context,
+            output_variables=self.inputs.data_unresolved.tc_playbook_out_variables,
         )
 
     @cached_property
@@ -610,19 +621,18 @@ class TcEx:
            (dict): Dictionary of proxy settings
         """
         return proxies(
-            proxy_host=self.inputs.data.tc_proxy_host,
-            proxy_port=self.inputs.data.tc_proxy_port,
-            proxy_user=self.inputs.data.tc_proxy_username,
-            proxy_pass=self.inputs.data.tc_proxy_password,
+            proxy_host=self.inputs.data_unresolved.tc_proxy_host,
+            proxy_port=self.inputs.data_unresolved.tc_proxy_port,
+            proxy_user=self.inputs.data_unresolved.tc_proxy_username,
+            proxy_pass=self.inputs.data_unresolved.tc_proxy_password,
         )
 
     # TODO: [med] update to support scoped instance
-    @cached_property
     def redis_client(self) -> RedisClient:
         """Return redis client instance configure for Playbook/Service Apps."""
         return self.get_redis_client(
-            host=self.inputs.data.tc_kvstore_host,
-            port=self.inputs.data.tc_kvstore_port,
+            host=self.inputs.data_unresolved.tc_kvstore_host,
+            port=self.inputs.data_unresolved.tc_kvstore_port,
             db=0,
         )
 
@@ -636,8 +646,8 @@ class TcEx:
             key: The data key to be stored.
             value: The data value to be stored.
         """
-        if os.access(self.inputs.data.tc_out_path, os.W_OK):
-            results_file = f'{self.inputs.data.tc_out_path}/results.tc'
+        if os.access(self.inputs.data_unresolved.tc_out_path, os.W_OK):
+            results_file = f'{self.inputs.data_unresolved.tc_out_path}/results.tc'
         else:
             results_file = 'results.tc'
 
@@ -681,7 +691,7 @@ class TcEx:
 
     # TODO: [med] update to support scoped instance
     @cached_property
-    def session(self) -> TcSession:
+    def session_tc(self) -> TcSession:
         """Return an instance of Requests Session configured for the ThreatConnect API."""
         return self.get_session()
 
@@ -700,19 +710,23 @@ class TcEx:
     @cached_property
     def token(self) -> Tokens:
         """Return token object."""
-        sleep_interval = int(os.getenv('TC_TOKEN_SLEEP_INTERVAL', '30'))
-        _tokens = Tokens(self.inputs.data.tc_api_path, sleep_interval, self.inputs.data.tc_verify)
+        _tokens = Tokens(
+            self.inputs.data_unresolved.tc_api_path,
+            self.inputs.data_unresolved.tc_verify,
+        )
 
         # register token for Apps that pass token on start
-        if all([self.inputs.data.tc_token, self.inputs.data.tc_token_expires]):
+        if all(
+            [self.inputs.data_unresolved.tc_token, self.inputs.data_unresolved.tc_token_expires]
+        ):
             _tokens.register_token(
                 key=threading.current_thread().name,
-                token=self.inputs.data.tc_token,
-                expires=self.inputs.data.tc_token_expires,
+                token=self.inputs.data_unresolved.tc_token,
+                expires=self.inputs.data_unresolved.tc_token_expires,
             )
         return _tokens
 
     @cached_property
     def utils(self) -> Utils:
         """Include the Utils module."""
-        return Utils(temp_path=self.inputs.data.tc_temp_path)
+        return Utils(temp_path=self.inputs.data_unresolved.tc_temp_path)

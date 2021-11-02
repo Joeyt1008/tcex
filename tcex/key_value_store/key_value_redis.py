@@ -2,6 +2,9 @@
 # standard library
 from typing import TYPE_CHECKING, Any, Optional
 
+# first-party
+from tcex.registry import service_registry
+
 if TYPE_CHECKING:
     # first-party
     from tcex.key_value_store.redis_client import RedisClient
@@ -14,9 +17,9 @@ class KeyValueRedis:
         redis_client (redis.Client): An instance of redis client.
     """
 
-    def __init__(self, redis_client: 'RedisClient'):
+    def __init__(self):
         """Initialize the Class properties."""
-        self._redis_client = redis_client
+        self._redis_client = service_registry.redis_client
 
     def create(self, context: str, key: str, value: Any) -> None:
         """Create key/value pair in Redis.
