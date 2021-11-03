@@ -11,7 +11,7 @@ class TestUtils:
         Args:
             tcex (TcEx, fixture): An instantiated instance of TcEx object.
         """
-        r = tcex.session.get('/v2/owners')
+        r = tcex.session_tc.get('/v2/owners')
 
         assert r.status_code == 200
 

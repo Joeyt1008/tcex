@@ -63,7 +63,7 @@ class TestDataStore:
         def mp_post(*args, **kwargs):  # pylint: disable=unused-argument
             return MockPost({}, ok=False)
 
-        monkeypatch.setattr(tcex.session, 'post', mp_post)
+        monkeypatch.setattr(tcex.session_tc, 'post', mp_post)
 
         # create index
         key = str(uuid.uuid4())
@@ -110,7 +110,7 @@ class TestDataStore:
         ds = tcex.datastore('local', self.data_type)
 
         results = ds.add(rid=rid, data=data)
-        assert results.get('_type') == self.data_type
+        assert results.get('_type', '').endswith(self.data_type)
         assert results.get('_shards').get('successful') == 1
 
     def test_data_store_local_add_no_rid(self, tcex):
@@ -145,7 +145,7 @@ class TestDataStore:
         ds = tcex.datastore('local', self.data_type)
 
         # patch after datastore created
-        monkeypatch.setattr(tcex.session, 'post', mp_post)
+        monkeypatch.setattr(tcex.session_tc, 'post', mp_post)
         try:
             ds.add(rid=rid, data=None)
             assert False
@@ -188,7 +188,7 @@ class TestDataStore:
         ds = tcex.datastore('local', self.data_type)
 
         # patch after datastore created
-        monkeypatch.setattr(tcex.session, 'post', mp_post)
+        monkeypatch.setattr(tcex.session_tc, 'post', mp_post)
         try:
             ds.delete(rid=rid)
             assert False
@@ -243,7 +243,7 @@ class TestDataStore:
         ds = tcex.datastore('local', self.data_type)
 
         # patch after datastore created
-        monkeypatch.setattr(tcex.session, 'post', mp_post)
+        monkeypatch.setattr(tcex.session_tc, 'post', mp_post)
         try:
             ds.get()
             assert False
@@ -339,7 +339,7 @@ class TestDataStore:
         ds = tcex.datastore('local', self.data_type)
 
         # patch after datastore created
-        monkeypatch.setattr(tcex.session, 'post', mp_post)
+        monkeypatch.setattr(tcex.session_tc, 'post', mp_post)
         try:
             ds.update(rid=None, data=None)
             assert False

@@ -133,7 +133,7 @@ class TestToken:
         tcex.token.token_expires = '1700000000'
 
         try:
-            r = tcex.session.get('/v2/owners')
+            r = tcex.session_tc.get('/v2/owners')
             assert tcex.token.token_expires == 1700000000  # coverage
             assert r.status_code == 200, f'Failed API call ({r.text})'
         except RuntimeError:
@@ -179,7 +179,7 @@ class TestToken:
         # sleep until token renewal
         time.sleep(tcex.token.sleep_interval + 1)
 
-        r = tcex.session.get('/v2/owners')
+        r = tcex.session_tc.get('/v2/owners')
         if r.ok:
             assert False, 'API request passed on a fail test.'
 
@@ -204,7 +204,7 @@ class TestToken:
         if sleep:
             time.sleep(tcex.token.sleep_interval + 1)
 
-        r = tcex.session.get('/v2/owners')
+        r = tcex.session_tc.get('/v2/owners')
         if not r.ok:
             assert False, f'API call failed {r.text}'
 
