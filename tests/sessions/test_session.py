@@ -22,7 +22,7 @@ class TestUtils:
         Args:
             tcex_hmac (TcEx, fixture): An instantiated instance of TcEx object with no token.
         """
-        r = tcex_hmac.session.get('/v2/owners')
+        r = tcex_hmac.session_tc.get('/v2/owners')
 
         assert r.status_code == 200
 
@@ -33,6 +33,6 @@ class TestUtils:
         Args:
             tcex_proxy (TcEx, fixture): An instantiated instance of TcEx object.
         """
-        r = tcex_proxy.session.get('/v2/owners')
+        r = tcex_proxy.session_tc.get('/v2/owners')
 
         assert r.status_code == 200

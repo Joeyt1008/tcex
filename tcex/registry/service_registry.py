@@ -4,6 +4,14 @@ from typing import Callable, Type, Union, Tuple, Any
 from collections.abc import Container
 
 
+class ProxyDescriptor:
+    def __init__(self, wrapped, instance):
+        self.wrapped = wrapped
+        self.instance = instance
+
+    def __call__(self):
+        return self.wrapped.__get__(self.instance, self.instance)
+
 class ServiceRegistry(Container):
     """Dynamic service registry that supports raw values, factories, and factory providers.
 
@@ -56,21 +64,19 @@ class ServiceRegistry(Container):
                 provider_function = type(provider).__dict__[entry]
                 factory_provider = getattr(provider_function, 'factory_provider', None)
                 if factory_provider:
-                    provider_member = getattr(provider, entry)
                     provided_type, singleton = factory_provider
-                    if not callable(provider_member):
-                        raise RuntimeError(
-                            f'Provider {provider.__class__.__name__} registered '
-                            f'{provider_member.__name__}, but it is not callable.')
-                    self.add_factory(provided_type, provider_member, singleton)
-                value_provider = getattr(provider_function, 'value_provider', None)
-                if value_provider:
-                    provider_member = getattr(provider, entry)
-                    provided_type = value_provider
-                    if callable(provider_member):
-                        self.add_factory(provided_type, provider_member, singleton=True)
+                    if callable(provider_function):  # A function or member function
+                        # if it's a bound method, this will get the bound version
+                        provider_member = getattr(provider, entry)
+                        self.add_factory(provided_type, provider_member, singleton)
+                    elif hasattr(provider_function, '__get__'):
+                        # this is a property or non-callable descriptor:
+                        self.add_factory(
+                            provided_type,
+                            ProxyDescriptor(provider_function, provider),
+                            singleton)
                     else:
-                        self.add_service(provided_type, provider_member)
+                        self.add_service(provided_type, provider_function)
             except KeyError:
                 pass
 
@@ -110,10 +116,10 @@ class ServiceRegistry(Container):
         """Only used during testing to reset registry."""
         self._values = {}
 
-    @staticmethod
-    def factory(type_or_name: Union[str, Type], singleton: bool = False):
+    def factory(self, type_or_name: Union[str, Type], singleton: bool = False):
         """Decorator for a function that can be treated as a factory that provides a service.
 
+        Note: does NOT work with @property.
         Args:
             type_or_name: the concrete type of the provided service, or a name (MyClass or
             'MyClass')

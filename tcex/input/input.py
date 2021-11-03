@@ -284,7 +284,7 @@ class Input:
                     updated_value_array = []
                     for v in value:
                         if isinstance(v, str):
-                            v = self.playbook.read(v)
+                            v = registry.playbook.read(v)
                         updated_value_array.append(v)
                     _inputs[name] = updated_value_array
             elif isinstance(value, str):

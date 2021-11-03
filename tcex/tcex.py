@@ -31,7 +31,7 @@ from tcex.logger.logger import Logger
 from tcex.logger.trace_logger import TraceLogger
 from tcex.playbook import Playbook
 from tcex.pleb import Event, proxies
-from tcex.pleb.scoped_value import scoped_value
+from tcex.pleb.scoped_value import scoped_property
 from tcex.registry import registry
 from tcex.services.api_service import ApiService
 from tcex.services.common_service_trigger import CommonServiceTrigger
@@ -64,7 +64,6 @@ class TcEx:
         self._config: dict = kwargs.get('config') or {}
         self._exit_code = 0
         self._jobs = None
-        self._redis_client = None
         self._service = None
         self.event = Event()
         self.ij = InstallJson()
@@ -345,8 +344,8 @@ class TcEx:
             self.log.warning('Invalid exit code')
 
     @registry.factory(Playbook)
-    @scoped_value()
-    def get_playbook(
+    @scoped_property
+    def playbook(
         self, context: Optional[str] = None, output_variables: Optional[list] = None
     ) -> Playbook:
         """Return a new instance of playbook module.
@@ -363,7 +362,7 @@ class TcEx:
             output_variables=self.inputs.data_unresolved.tc_playbook_out_variables)
 
     @registry.factory('Redis')
-    @scoped_value()
+    @scoped_property
     def get_redis_client(self) -> 'redis.Redis':
         """Return a *new* instance of Redis client.
 
@@ -391,8 +390,8 @@ class TcEx:
 
     # TODO: [high] testing ... organize this later
     @registry.factory(type_or_name=TcSession)
-    @scoped_value()
-    def get_session(self) -> TcSession:
+    @scoped_property
+    def session_tc(self) -> TcSession:
         """Return an instance of Requests Session configured for the ThreatConnect API."""
         _session = TcSession(
             tc_api_access_id=self.inputs.data_unresolved.tc_api_access_id,
@@ -483,8 +482,8 @@ class TcEx:
             raise RuntimeError(code, message)
 
     @registry.factory('KeyValueStore')
-    @scoped_value()
-    def get_key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
+    @scoped_property
+    def key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
         """Return the correct KV store for this execution.
 
         The TCKeyValueAPI KV store is limited to two operations (create and read),
@@ -499,10 +498,6 @@ class TcEx:
         raise RuntimeError(
             f'Invalid KV Store Type: ({self.inputs.data_unresolved.tc_kvstore_type})'
         )
-
-    @property
-    def key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
-        return self.get_key_value_store()
 
     @property
     def log(self) -> TraceLogger:
@@ -600,16 +595,6 @@ class TcEx:
         """Get instance of the Notification module."""
         return Notifications(self)
 
-    @property
-    def playbook(self) -> Playbook:
-        """Return an instance of Playbooks module.
-
-        This property defaults context and outputvariables to arg values.
-
-        Returns:
-            tcex.playbook.Playbooks: An instance of Playbooks
-        """
-        return registry.playbook
 
     @cached_property
     def proxies(self) -> dict:
@@ -691,12 +676,6 @@ class TcEx:
             self.exit(1, 'Could not determine the service type.')
 
         return Service(self)
-
-    # TODO: [med] update to support scoped instance
-    @cached_property
-    def session_tc(self) -> TcSession:
-        """Return an instance of Requests Session configured for the ThreatConnect API."""
-        return registry.session_tc
 
     # TODO: [med] update to support scoped instance
     @cached_property
