@@ -13,7 +13,6 @@ from tcex.backports import cached_property
 from tcex.pleb import Event
 
 # get tcex logger
-from tcex.registry import service_registry
 
 logger = logging.getLogger('tcex')
 
@@ -24,9 +23,9 @@ class ThreatIntelUtils:
     INDICATOR = 'Indicator'
     GROUP = 'Group'
 
-    def __init__(self) -> None:
+    def __init__(self, session) -> None:
         """Initialize class properties."""
-        self.session = service_registry.session_tc
+        self.session = session
 
         # properties
         self.event = Event()

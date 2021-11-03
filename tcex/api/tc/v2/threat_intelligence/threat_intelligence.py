@@ -36,7 +36,7 @@ from tcex.api.tc.v2.threat_intelligence.mappings.owner import Owner
 from tcex.api.tc.v2.threat_intelligence.mappings.tag import Tag
 from tcex.api.tc.v2.threat_intelligence.mappings.task import Task
 from tcex.api.tc.v2.threat_intelligence.mappings.victim import Victim
-from tcex.registry import service_registry
+from tcex.registry import registry
 from tcex.tcex_error_codes import TcExErrorCodes
 from tcex.utils import Utils
 
@@ -54,7 +54,7 @@ class ThreatIntelligence:
 
     def __init__(self) -> None:
         """Initialize Class properties."""
-        self.session = service_registry.session_tc
+        self.session = registry.session_tc
 
         # properties
         self._custom_indicator_classes = {}

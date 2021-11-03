@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Any, Optional
 
 # first-party
-from tcex.registry import service_registry
+from tcex.registry import registry
 
 if TYPE_CHECKING:
     # first-party
@@ -19,7 +19,7 @@ class KeyValueRedis:
 
     def __init__(self):
         """Initialize the Class properties."""
-        self._redis_client = service_registry.redis_client
+        self._redis_client = registry.redis_client
 
     def create(self, context: str, key: str, value: Any) -> None:
         """Create key/value pair in Redis.

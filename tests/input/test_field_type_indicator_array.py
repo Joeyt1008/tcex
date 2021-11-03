@@ -480,7 +480,7 @@ class TestInputsFieldTypeIndicatorArray(InputTest):
         assert list(tcex.inputs.data.my_indicator_array.entities()) == [entity]
 
         # values method returns string members as well as 'value' key of TCEntity members
-        assert list(tcex.inputs.data.my_indicator_array.values()) == ['8.8.8.8', '1.1.1.1']
+        assert list(tcex.inputs.data.my_indicator_array._values()) == ['8.8.8.8', '1.1.1.1']
 
     @staticmethod
     @pytest.mark.parametrize(

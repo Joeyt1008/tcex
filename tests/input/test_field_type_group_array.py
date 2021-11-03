@@ -474,7 +474,7 @@ class TestInputsFieldTypeGroupArray(InputTest):
         assert list(tcex.inputs.data.my_group_array.entities()) == [entity]
 
         # values method returns string members as well as 'value' key of TCEntity members
-        assert list(tcex.inputs.data.my_group_array.values()) == ['Adversary Name', 'Adversary 2']
+        assert list(tcex.inputs.data.my_group_array._values()) == ['Adversary Name', 'Adversary 2']
 
     @staticmethod
     @pytest.mark.parametrize(

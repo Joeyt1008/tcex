@@ -11,6 +11,7 @@ from requests import Session
 # first-party
 from tcex.app_config.install_json import InstallJson
 from tcex.input.field_types.sensitive import Sensitive
+from tcex.registry import registry
 from tcex.sessions.tc_session import HmacAuth
 from tcex.tcex import TcEx
 from tcex.utils.utils import Utils
@@ -361,6 +362,7 @@ class MockApp:
     def tcex(self) -> TcEx:
         """Return an instance of tcex."""
         # write file params and initialize new tcex instance
+        registry._reset()
         self.mock_file_params()
         tcex = TcEx()
 

@@ -18,7 +18,7 @@ from tcex.input.field_types import Sensitive
 from tcex.input.models import feature_map, runtime_level_map
 from tcex.playbook import Playbook
 from tcex.pleb import Event, NoneModel, proxies
-from tcex.registry import service_registry
+from tcex.registry import registry
 from tcex.sessions import TcSession
 from tcex.utils import Utils
 
@@ -80,17 +80,13 @@ class Input:
     ) -> Dict[str, any]:
         """Subscribe to AOT action channel."""
         params = {}
-        if tc_aot_enabled is not True:
+        if not tc_aot_enabled:
             return params
 
         if tc_kvstore_type == 'Redis':
 
             # get an instance of redis client
-            redis_client = RedisClient(
-                host=tc_kvstore_host,
-                port=tc_kvstore_port,
-                db=0,
-            ).client
+            redis_client = registry.redis_client
 
             try:
                 self.log.info('feature=inputs, event=blocking-for-aot')
@@ -195,7 +191,7 @@ class Input:
         data = None
 
         # retrieve value from API
-        r = service_registry.session_tc.get(f'/internal/variable/runtime/{provider}/{key}')
+        r = registry.session_tc.get(f'/internal/variable/runtime/{provider}/{key}')
         if r.ok:
             try:
                 data = r.json().get('data')
@@ -224,7 +220,7 @@ class Input:
         #       the custom field types, so we use a singleton Session object that needs
         #       to get instantiated before the datamodel parses the App inputs, but after
         #       the "base" inputs are loaded into the model.
-        _ = service_registry.session_tc
+        _ = registry.session_tc
 
         if model:
             self._models.insert(0, model)
@@ -310,7 +306,7 @@ class Input:
                     )
                     # _inputs[name] = self._resolve_variable(**m.groupdict())
                 elif self.ij.data.runtime_level.lower() == 'playbook':
-                    _inputs[name] = self.playbook.read(value)
+                    _inputs[name] = registry.playbook.read(value)
 
         # update contents
         self.contents_update(_inputs)

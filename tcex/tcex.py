@@ -31,8 +31,8 @@ from tcex.logger.logger import Logger
 from tcex.logger.trace_logger import TraceLogger
 from tcex.playbook import Playbook
 from tcex.pleb import Event, proxies
-from tcex.pleb.scoped_value import ScopedValue
-from tcex.registry import service_registry
+from tcex.pleb.scoped_value import scoped_value
+from tcex.registry import registry
 from tcex.services.api_service import ApiService
 from tcex.services.common_service_trigger import CommonServiceTrigger
 from tcex.services.webhook_trigger_service import WebhookTriggerService
@@ -72,10 +72,8 @@ class TcEx:
 
         # init inputs
         self.inputs = Input(self._config, kwargs.get('config_file'))
-        service_registry.add_factory(TcSession, ScopedValue(self.get_session), singleton=False)
-        service_registry.add_factory(RedisClient, ScopedValue(self.redis_client))
-        service_registry.add_factory('KeyValueStore', ScopedValue(self.get_key_value_store))
-        service_registry.add_factory(Playbook, ScopedValue(self.get_playbook))
+
+        registry.add_service_provider(self)
 
         # method subscription for Event module
         self.event.subscribe(channel='exit', callback=self.exit)
@@ -87,9 +85,11 @@ class TcEx:
 
         # log standard App info early so it shows at the top of the logfile
         self.logger.log_info(self.inputs.data_unresolved)
+        self._log = None
 
-    def _signal_handler(self, signal_interupt: int, _) -> None:
-        """Handle singal interrupt."""
+
+    def _signal_handler(self, signal_interrupt: int, _) -> None:
+        """Handle signal interrupt."""
         call_file: str = os.path.basename(inspect.stack()[1][0].f_code.co_filename)
         call_module: str = inspect.stack()[1][0].f_globals['__name__'].lstrip('Functions.')
         call_line: int = inspect.stack()[1][0].f_lineno
@@ -97,7 +97,7 @@ class TcEx:
             f'App interrupted - file: {call_file}, method: {call_module}, line: {call_line}.'
         )
         exit_code = 0
-        if threading.current_thread().name == 'MainThread' and signal_interupt in (2, 15):
+        if threading.current_thread().name == 'MainThread' and signal_interrupt in (2, 15):
             exit_code = 1
 
         self.exit(exit_code, 'The App received an interrupt signal and will now exit.')
@@ -118,7 +118,7 @@ class TcEx:
         """Push message to AOT action channel."""
         if self.inputs.data_unresolved.tc_playbook_db_type == 'Redis':
             try:
-                service_registry.redis_client.rpush(
+                registry.redis_client.rpush(
                     self.inputs.data_unresolved.tc_exit_channel, exit_code
                 )
             except Exception as e:  # pragma: no cover
@@ -227,7 +227,8 @@ class TcEx:
     @property
     def case_management(self) -> CaseManagement:
         """Return a case management instance."""
-        return CaseManagement(self.session)
+        if TcSession in registry:
+            return CaseManagement(registry.session_tc)
 
     @property
     def cm(self) -> CaseManagement:
@@ -343,6 +344,8 @@ class TcEx:
         else:
             self.log.warning('Invalid exit code')
 
+    @registry.factory(Playbook)
+    @scoped_value()
     def get_playbook(
         self, context: Optional[str] = None, output_variables: Optional[list] = None
     ) -> Playbook:
@@ -354,12 +357,14 @@ class TcEx:
             output_variables: The requested output variables. For PB Apps outputs are provided on
                 startup, but for service Apps each request gets different outputs.
         """
-        return Playbook(self.key_value_store(), context, output_variables)
+        return Playbook(
+            registry.key_value_store,
+            context=self.inputs.data_unresolved.tc_playbook_kvstore_context,
+            output_variables=self.inputs.data_unresolved.tc_playbook_out_variables)
 
-    @staticmethod
-    def get_redis_client(
-        host: str, port: int, db: int = 0, blocking_pool: bool = False, **kwargs
-    ) -> RedisClient:
+    @registry.factory('Redis')
+    @scoped_value()
+    def get_redis_client(self) -> 'redis.Redis':
         """Return a *new* instance of Redis client.
 
         For a full list of kwargs see https://redis-py.readthedocs.io/en/latest/#redis.Connection.
@@ -379,11 +384,14 @@ class TcEx:
             Redis.client: An instance of redis client.
         """
         return RedisClient(
-            host=host, port=port, db=db, blocking_pool=blocking_pool, **kwargs
+            host=self.inputs.data_unresolved.tc_kvstore_host,
+            port=self.inputs.data_unresolved.tc_kvstore_port,
+            db=0, blocking_pool=False
         ).client
 
     # TODO: [high] testing ... organize this later
-    @ScopedValue
+    @registry.factory(type_or_name=TcSession)
+    @scoped_value()
     def get_session(self) -> TcSession:
         """Return an instance of Requests Session configured for the ThreatConnect API."""
         _session = TcSession(
@@ -474,7 +482,8 @@ class TcEx:
         if raise_error:
             raise RuntimeError(code, message)
 
-    # TODO: [med] update to support scoped instance
+    @registry.factory('KeyValueStore')
+    @scoped_value()
     def get_key_value_store(self) -> Union[KeyValueApi, KeyValueRedis]:
         """Return the correct KV store for this execution.
 
@@ -511,7 +520,7 @@ class TcEx:
     @cached_property
     def logger(self) -> Logger:
         """Return logger."""
-        _logger = Logger(logger_name='tcex', session=self.get_session())
+        _logger = Logger(logger_name='tcex', session=registry.session_tc)
 
         # add api handler
         if (
@@ -591,7 +600,7 @@ class TcEx:
         """Get instance of the Notification module."""
         return Notifications(self)
 
-    @cached_property
+    @property
     def playbook(self) -> Playbook:
         """Return an instance of Playbooks module.
 
@@ -600,10 +609,7 @@ class TcEx:
         Returns:
             tcex.playbook.Playbooks: An instance of Playbooks
         """
-        return self.get_playbook(
-            context=self.inputs.data_unresolved.tc_playbook_kvstore_context,
-            output_variables=self.inputs.data_unresolved.tc_playbook_out_variables,
-        )
+        return registry.playbook
 
     @cached_property
     def proxies(self) -> dict:
@@ -628,13 +634,10 @@ class TcEx:
         )
 
     # TODO: [med] update to support scoped instance
+    @property
     def redis_client(self) -> RedisClient:
         """Return redis client instance configure for Playbook/Service Apps."""
-        return self.get_redis_client(
-            host=self.inputs.data_unresolved.tc_kvstore_host,
-            port=self.inputs.data_unresolved.tc_kvstore_port,
-            db=0,
-        )
+        return registry.redis_client
 
     def results_tc(self, key: str, value: str) -> None:
         """Write data to results_tc file in TcEX specified directory.
@@ -693,7 +696,7 @@ class TcEx:
     @cached_property
     def session_tc(self) -> TcSession:
         """Return an instance of Requests Session configured for the ThreatConnect API."""
-        return self.get_session()
+        return registry.session_tc
 
     # TODO: [med] update to support scoped instance
     @cached_property
@@ -712,6 +715,7 @@ class TcEx:
         """Return token object."""
         _tokens = Tokens(
             self.inputs.data_unresolved.tc_api_path,
+            30,
             self.inputs.data_unresolved.tc_verify,
         )
 

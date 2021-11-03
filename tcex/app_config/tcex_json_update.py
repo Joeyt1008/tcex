@@ -40,7 +40,7 @@ class TcexJsonUpdate:
         """Update the package app_name in the tcex.json file."""
         if (
             self.tj.data.package.app_name is None
-            or self.tj.data.package.app_name in self.tj.ij.app_prefixes.values()
+            or self.tj.data.package.app_name in self.tj.ij.app_prefixes._values()
         ):
             # lower case name and replace prefix if already exists
             _app_name = (

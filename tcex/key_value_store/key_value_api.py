@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 # first-party
 from tcex.app_config.install_json import InstallJson
-from tcex.registry import service_registry
+from tcex.registry import registry
 
 
 class KeyValueApi:
@@ -17,7 +17,7 @@ class KeyValueApi:
 
     def __init__(self) -> None:
         """Initialize the Class properties."""
-        self._session = service_registry.session_tc
+        self._session = registry.session_tc
 
         # properties
         self.ij = InstallJson()

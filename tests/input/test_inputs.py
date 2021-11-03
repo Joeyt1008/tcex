@@ -11,6 +11,7 @@ from pydantic import BaseModel, Extra
 
 # first-party
 from tcex import TcEx
+from tcex.registry import registry
 
 if TYPE_CHECKING:
     # third-party
@@ -21,6 +22,9 @@ if TYPE_CHECKING:
 
 class TestInputsConfig:
     """Test TcEx Inputs Config."""
+
+    def setup(self):
+        registry._reset()
 
     @staticmethod
     def test_aot_inputs(playbook_app: 'MockApp', redis_client: 'redis.Redis'):
@@ -121,6 +125,9 @@ class TestInputsConfig:
         Args:
             tcex (TcEx, fixture): An instantiated instance of TcEx.
         """
+
+        registry.add_service_provider(tcex)  # registry was cleared by setup, but is needed
+
         # print(tcex.inputs.data.tc_token.get_secret_value())
         # print(tcex.inputs.data.tc_token_expires)
         assert tcex.inputs.data.tc_token
