@@ -1,0 +1,8 @@
+install: 
+  - pip install pytest pytest-cov codecov python-dateutil requests mock matplotlib
+language: python
+python:
+  - "3.8"
+script:
+  - python setup.py install
+  - pytest tests/
