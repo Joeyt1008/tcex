@@ -3,6 +3,9 @@ install:
 language: python
 python:
   - "3.8"
+arch:
+  - amd64
+  - arm64
 script:
   - python setup.py install --force
   - pip install tcex[development]
